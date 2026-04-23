@@ -45,10 +45,12 @@ class UrlRequest(BaseModel):
 @app.post("/classify")
 def classify_url(request: UrlRequest):
     try:
-        # Vectorize + predict
-        X_vec = vectorizer.transform([request.url])
+        # Combine title and url for vectorization (matching train.py)
+        text = (request.title or "") + " " + request.url
+        X_vec = vectorizer.transform([text])
+
         prediction = model.predict(X_vec)[0].lower()
-        if prediction not in ["productive", "distractive"]:
+        if prediction not in ["productive", "distracting"]:
           prediction = "productive"  # safe default
 
 
@@ -93,7 +95,11 @@ def get_analytics():
     for day, label, count in rows:
         if day not in data:
             data[day] = {"productive": 0, "distracting": 0}
-        data[day][label] = count
+
+        # Handle potential legacy "distractive" label
+        clean_label = "distracting" if label == "distractive" else label
+        if clean_label in data[day]:
+            data[day][clean_label] += count
 
     return data
 
